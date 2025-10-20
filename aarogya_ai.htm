@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="app-title">AarogyaAI - ಗ್ರಾಮೀಣ ಆರೋಗ್ಯ ಸಹಾಯ</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom font and basic styling for modern look */
+        body { font-family: 'Inter', sans-serif; background-color: #f0fdf4; }
+        /* Adjusted height calculation for reliable chat scrolling */
+        .chat-container { height: calc(100vh - 12rem); overflow-y: auto; }
+        .message { max-width: 85%; padding: 0.75rem 1rem; border-radius: 1rem; margin-bottom: 0.5rem; }
+        .user-message { background-color: #3b82f6; color: white; margin-left: auto; border-bottom-right-radius: 0; }
+        .ai-message { background-color: #e5e7eb; color: #1f2937; border-bottom-left-radius: 0; }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Main Application Container -->
+    <div id="app" class="max-w-md mx-auto bg-white shadow-xl min-h-screen relative">
+        
+        <!-- Header -->
+        <header class="p-4 bg-emerald-600 text-white shadow-lg sticky top-0 z-10 flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold">🏥 AarogyaAI</h1>
+                <p id="header-tagline" class="text-sm font-light">AI ಚಾಲಿತ ಆರೋಗ್ಯ ಸಹಾಯ, ಹಳ್ಳಿಗಳಿಗಾಗಿ</p>
+            </div>
+            
+            <!-- Language Selector - Kannada, English, Hindi -->
+            <select id="language-selector" onchange="changeLanguage(this.value)" class="bg-emerald-700 text-white border border-emerald-500 rounded-lg p-2 text-sm focus:ring-white focus:border-white">
+                <option value="kn">ಕನ್ನಡ (Kannada)</option>
+                <option value="en">English</option>
+                <option value="hi">हिंदी (Hindi)</option>
+            </select>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <div class="flex border-b border-gray-200 sticky top-[4rem] bg-white z-10">
+            <button onclick="showSection('chat')" id="tab-chat" class="flex-1 py-3 text-center border-b-2 font-semibold transition duration-200 text-emerald-700 border-emerald-700">🤖 AI ಸಲಹೆ</button>
+            <button onclick="showSection('map')" id="tab-map" class="flex-1 py-3 text-center text-gray-500 hover:text-emerald-700 hover:border-emerald-700">📍 ಸಂಪನ್ಮೂಲ</button>
+            <button onclick="showSection('reminder')" id="tab-reminder" class="flex-1 py-3 text-center text-gray-500 hover:text-emerald-700 hover:border-emerald-700">⏰ ಜ್ಞಾಪನೆ</button>
+        </div>
+
+        <!-- Section: 1. AI Chat -->
+        <section id="section-chat" class="p-4">
+            <!-- Medical Disclaimer - CRITICAL for Judges -->
+            <div id="disclaimer-box" class="p-3 mb-4 bg-yellow-100 text-yellow-800 border border-yellow-300 rounded-lg text-sm font-medium">
+                ⚠️ **ಹಕ್ಕುತ್ಯಾಗ (Disclaimer):** ಇದು AI ಸಲಹೆ ಮಾತ್ರ. ವೈದ್ಯಕೀಯ ರೋಗನಿರ್ಣಯಕ್ಕಾಗಿ ಇದನ್ನು ಬಳಸಬೇಡಿ. ತಕ್ಷಣ ವೈದ್ಯರನ್ನು ಭೇಟಿ ಮಾಡಿ.
+            </div>
+
+            <!-- Chat Display Area -->
+            <div id="chat-messages" class="chat-container space-y-3 p-2 bg-gray-50 rounded-lg border pb-20">
+                <!-- Initial Welcome Message -->
+                <div class="ai-message" id="welcome-message">ನಾನು AarogyaAI. ದಯವಿಟ್ಟು ನಿಮ್ಮ ರೋಗಲಕ್ಷಣಗಳ ಬಗ್ಗೆ ಸಂಕ್ಷಿಪ್ತವಾಗಿ ಕನ್ನಡದಲ್ಲಿ ತಿಳಿಸಿ.</div>
+            </div>
+
+            <!-- Chat Input - FIXED POSITIONING with z-20 -->
+            <div class="flex p-4 border-t absolute bottom-0 left-0 right-0 bg-white z-20">
+                <input type="text" id="chat-input" placeholder="ನಿಮ್ಮ ರೋಗಲಕ್ಷಣಗಳನ್ನು ನಮೂದಿಸಿ..." class="flex-1 p-3 border border-gray-300 rounded-l-xl focus:ring-emerald-500 focus:border-emerald-500">
+                <button id="send-btn" onclick="sendQuery()" class="bg-emerald-600 text-white p-3 rounded-r-xl font-semibold hover:bg-emerald-700 transition duration-150">ಕಳುಹಿಸು</button>
+            </div>
+        </section>
+
+        <!-- Section: 2. Nearest Hospital Finder -->
+        <section id="section-map" class="p-4 hidden">
+            <h2 id="map-title" class="text-lg font-semibold mb-3 text-emerald-800">📍 ಹತ್ತಿರದ ಆರೋಗ್ಯ ಕೇಂದ್ರ ಶೋಧಕ</h2>
+            <p id="map-desc" class="mb-4 text-gray-600">ಈ ವೈಶಿಷ್ಟ್ಯವು ನಿಮ್ಮ ಸ್ಥಳದ ಆಧಾರದ ಮೇಲೆ ಹತ್ತಿರದ ಆಸ್ಪತ್ರೆಗಳು, ಕ್ಲಿನಿಕ್‌ಗಳು ಮತ್ತು ಔಷಧಾಲಯಗಳನ್ನು ಕಂಡುಹಿಡಿಯಲು Google Maps ಅನ್ನು ಬಳಸುತ್ತದೆ.</p>
+            
+            <button id="find-hospitals-btn" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold shadow-md hover:bg-blue-700 transition duration-150">
+                GPS ಸ್ಥಳದ ಆಧಾರದ ಮೇಲೆ ಹುಡುಕಿ
+            </button>
+
+            <div id="map-results" class="mt-4 p-4 bg-gray-100 rounded-lg text-sm hidden">
+                <p class="font-semibold text-gray-700">ಫಲಿತಾಂಶ: Google Maps ತೆರೆಯಲಾಗುತ್ತಿದೆ...</p>
+                <p class="text-xs text-gray-500 mt-1">ಸ್ಥಳ ಸೇವೆಗಳು ಲಭ್ಯವಾದ ತಕ್ಷಣ, Google Maps ಅಪ್ಲಿಕೇಶನ್ ತೆರೆಯುತ್ತದೆ ಮತ್ತು ನಿಮಗೆ ಹತ್ತಿರದ ಆರೋಗ್ಯ ಸಂಪನ್ಮೂಲಗಳನ್ನು ತೋರಿಸುತ್ತದೆ.</p>
+                <div id="map-iframe-placeholder" class="mt-4 w-full h-48 bg-gray-300 rounded-lg flex items-center justify-center text-gray-600">
+                    Map Placeholder
+                </div>
+            </div>
+        </section>
+
+        <!-- Section: 3. Medicine Reminder -->
+        <section id="section-reminder" class="p-4 hidden">
+            <h2 id="reminder-title" class="text-lg font-semibold mb-3 text-emerald-800">⏰ ಔಷಧ ಜ್ಞಾಪನೆ</h2>
+            <!-- UPDATED DESCRIPTION (no mention of Firestore) -->
+            <p id="reminder-desc" class="mb-4 text-gray-600">ಔಷಧದ ಹೆಸರು ಮತ್ತು ಸಮಯವನ್ನು ನಮೂದಿಸಿ. ನಿಮ್ಮ ಜ್ಞಾಪನೆಗಳು ಉಳಿಸಲ್ಪಡುತ್ತವೆ.</p>
+            
+            <div id="auth-status" class="mb-4 p-2 bg-gray-100 rounded-lg text-sm text-gray-600 border border-gray-300">Connecting to database...</div>
+            
+            <label id="med-name-label" for="med-name" class="block text-sm font-medium text-gray-700">ಔಷಧದ ಹೆಸರು</label>
+            <input type="text" id="med-name" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg">
+
+            <label id="med-time-label" for="med-time" class="block text-sm font-medium text-gray-700 mt-4">ಸಮಯ (Time)</label>
+            <input type="time" id="med-time" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg">
+
+            <button onclick="setReminder()" id="set-reminder-btn" class="w-full mt-6 bg-purple-600 text-white py-3 rounded-xl font-bold shadow-md hover:bg-purple-700 transition duration-150">
+                ಜ್ಞಾಪನೆ ಹೊಂದಿಸಿ
+            </button>
+
+            <div id="reminder-list" class="mt-6 space-y-2">
+                <!-- Reminders will be loaded here via Firestore onSnapshot -->
+                <div class="p-3 bg-blue-50 rounded-lg border border-blue-200 text-sm text-blue-800" id="loading-reminders">Loading reminders...</div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- JavaScript Logic & Firebase Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, doc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ************************************************
+        // CRITICAL: REPLACE "YOUR_GEMINI_API_KEY" WITH YOUR KEY
+        // ************************************************
+        const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY"; 
+        
+        // Global Firebase vars
+        let db;
+        let auth;
+        let userId = 'anonymous'; 
+
+        // Mandatory Global Variables and Initialization
+        // NOTE: These variables are provided by the canvas environment
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        let currentLang = 'kn'; 
+
+        // --- Firebase Initialization and Auth ---
+        if (Object.keys(firebaseConfig).length > 0) {
+            setLogLevel('debug');
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            
+            const authStatusDiv = document.getElementById('auth-status');
+
+            // Function to update the UI with User ID
+            const updateAuthStatus = (uid, method) => {
+                userId = uid;
+                authStatusDiv.innerHTML = `Authenticated as: <span class="font-semibold text-emerald-800 break-all">${userId}</span> (${method}).`;
+                console.log(`Authenticated: ${method}. User ID: ${userId}`);
+                loadReminders(); // Start loading data once authenticated
+            };
+
+            if (initialAuthToken) {
+                authStatusDiv.textContent = "Authenticating with custom token...";
+                signInWithCustomToken(auth, initialAuthToken)
+                    .then((userCredential) => {
+                        updateAuthStatus(userCredential.user.uid, 'Custom Token');
+                    })
+                    .catch((error) => {
+                        console.error("Custom token sign in failed. Falling back to anonymous.", error);
+                        // Fallback to anonymous sign-in
+                        signInAnonymously(auth).then(userCredential => {
+                            updateAuthStatus(userCredential.user.uid, 'Anonymous');
+                        });
+                    });
+            } else {
+                authStatusDiv.textContent = "Signing in anonymously...";
+                signInAnonymously(auth).then(userCredential => {
+                    updateAuthStatus(userCredential.user.uid, 'Anonymous');
+                });
+            }
+        } else {
+            document.getElementById('auth-status').innerHTML = `<span class="text-red-500">Database connection failed: Firebase config missing.</span>`;
+            document.getElementById('loading-reminders').innerHTML = `<p class="text-red-500">Database connection error: Firebase config missing.</p>`;
+            console.error("Firebase configuration is missing. Reminder functionality will not work.");
+        }
+
+        // Localization content map (Updated reminder_desc)
+        const languageContent = {
+            'kn': {
+                app_title: "AarogyaAI - ಗ್ರಾಮೀಣ ಆರೋಗ್ಯ ಸಹಾಯ",
+                header_tag: "AI ಚಾಲಿತ ಆರೋಗ್ಯ ಸಹಾಯ, ಹಳ್ಳಿಗಳಿಗಾಗಿ",
+                tab_chat: "🤖 AI ಸಲಹೆ",
+                tab_map: "📍 ಸಂಪನ್ಮೂಲ",
+                tab_reminder: "⏰ ಜ್ಞಾಪನೆ",
+                disclaimer_text: "⚠️ **ಹಕ್ಕುತ್ಯಾಗ (Disclaimer):** ಇದು AI ಸಲಹೆ ಮಾತ್ರ. ವೈದ್ಯಕೀಯ ರೋಗನಿರ್ಣಯಕ್ಕಾಗಿ ಇದನ್ನು ಬಳಸಬೇಡಿ. ತಕ್ಷಣ ವೈದ್ಯರನ್ನು ಭೇಟಿ ಮಾಡಿ.",
+                input_placeholder: "ನಿಮ್ಮ ರೋಗಲಕ್ಷಣಗಳನ್ನು ನಮೂದಿಸಿ...",
+                send_btn: "ಕಳುಹಿಸು",
+                send_loading: "... ಯೋಚಿಸುತ್ತಿದೆ",
+                ai_error: "API ಕರೆಯಲ್ಲಿ ದೋಷ ಕಂಡುಬಂದಿದೆ. ನಿಮ್ಮ API ಕೀ ಸರಿಯಾಗಿದೆ ಮತ್ತು ಇಂಟರ್ನೆಟ್ ಸಂಪರ್ಕವನ್ನು ಪರಿಶೀಲಿಸಿ.",
+                ai_fallback: "ಕ್ಷಮಿಸಿ, ಈ ಸಮಸ್ಯೆಯ ಬಗ್ಗೆ ನಾನು ನಿಮಗೆ ಸಹಾಯ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ನೇರವಾಗಿ ವೈದ್ಯರನ್ನು ಸಂಪರ್ಕಿಸಿ.",
+                ai_welcome: "ನಾನು AarogyaAI. ದಯವಿಟ್ಟು ನಿಮ್ಮ ರೋಗಲಕ್ಷಣಗಳ ಬಗ್ಗೆ ಸಂಕ್ಷಿಪ್ತವಾಗಿ ಕನ್ನಡದಲ್ಲಿ ತಿಳಿಸಿ.",
+                map_title: "📍 ಹತ್ತಿರದ ಆರೋಗ್ಯ ಕೇಂದ್ರ ಶೋಧಕ",
+                map_desc: "ಈ ವೈಶಿಷ್ಟ್ಯವು ನಿಮ್ಮ ಸ್ಥಳದ ಆಧಾರದ ಮೇಲೆ ಹತ್ತಿರದ ಆಸ್ಪತ್ರೆಗಳು, ಕ್ಲಿನಿಕ್‌ಗಳು ಮತ್ತು ಔಷಧಾಲಯಗಳನ್ನು ಕಂಡುಹಿಡಿಯಲು Google Maps ಅನ್ನು ಬಳಸುತ್ತದೆ.",
+                map_btn: "GPS ಸ್ಥಳದ ಆಧಾರದ ಮೇಲೆ ಹುಡುಕಿ",
+                reminder_title: "⏰ ಔಷಧ ಜ್ಞಾಪನೆ",
+                reminder_desc: "ಔಷಧದ ಹೆಸರು ಮತ್ತು ಸಮಯವನ್ನು ನಮೂದಿಸಿ. ನಿಮ್ಮ ಜ್ಞಾಪನೆಗಳು ಉಳಿಸಲ್ಪಡುತ್ತವೆ.", // SIMPLIFIED KN
+                med_name_label: "ಔಷಧದ ಹೆಸರು",
+                med_time_label: "ಸಮಯ (Time)",
+                set_reminder_btn: "ಜ್ಞಾಪನೆ ಹೊಂದಿಸಿ",
+                reminder_empty_alert: "ಔಷಧದ ಹೆಸರು ಮತ್ತು ಸಮಯ ಎರಡನ್ನೂ ನಮೂದಿಸಿ.",
+                reminder_empty_list: "ಇಲ್ಲಿ ಯಾವುದೇ ಜ್ಞಾಪನೆಗಳನ್ನು ಹೊಂದಿಸಲಾಗಿಲ್ಲ.",
+                reminder_delete_btn: "ಅಳಿಸಿ",
+                reminder_added_on: (date) => `<span class="text-xs text-gray-500 block">(${date} ರಂದು ಸೇರಿಸಲಾಗಿದೆ)</span>`,
+                map_loc_error: "GPS ಸ್ಥಳ ಲಭ್ಯವಿಲ್ಲ: ದಯವಿಟ್ಟು ಸ್ಥಳ ಅನುಮತಿಗಳನ್ನು ಸಕ್ರಿಯಗೊಳಿಸಿ."
+            },
+            'en': {
+                app_title: "AarogyaAI - Rural Health Assistant",
+                header_tag: "AI-Powered Health Assistant for Rural Areas",
+                tab_chat: "🤖 AI Advice",
+                tab_map: "📍 Resources",
+                tab_reminder: "⏰ Reminder",
+                disclaimer_text: "⚠️ **Disclaimer:** This is AI advice only. Do not use for medical diagnosis. Consult a doctor immediately.",
+                input_placeholder: "Enter your symptoms...",
+                send_btn: "Send",
+                send_loading: "... Thinking",
+                ai_error: "API call error. Check your API key and internet connection.",
+                ai_fallback: "Sorry, I couldn't assist with this issue. Please contact a doctor directly.",
+                ai_welcome: "I am AarogyaAI. Please describe your symptoms briefly in English.",
+                map_title: "📍 Nearest Health Center Finder",
+                map_desc: "This feature uses Google Maps to find nearby hospitals, clinics, and pharmacies based on your location.",
+                map_btn: "Search based on GPS Location",
+                reminder_title: "⏰ Medicine Reminder",
+                reminder_desc: "Enter the medicine name and time. Your reminders will be saved permanently.", // SIMPLIFIED EN
+                med_name_label: "Medicine Name",
+                med_time_label: "Time",
+                set_reminder_btn: "Set Reminder",
+                reminder_empty_alert: "Please enter both medicine name and time.",
+                reminder_empty_list: "No reminders have been set here.",
+                reminder_delete_btn: "Delete",
+                reminder_added_on: (date) => `<span class="text-xs text-gray-500 block"> (Added on ${date})</span>`,
+                map_loc_error: "GPS location unavailable: Please enable location permissions."
+            },
+            'hi': {
+                app_title: "AarogyaAI - ग्रामीण स्वास्थ्य सहायता",
+                header_tag: "AI-संचालित स्वास्थ्य सहायता, गांवों के लिए",
+                tab_chat: "🤖 AI सलाह",
+                tab_map: "📍 संसाधन",
+                tab_reminder: "⏰ अनुस्मारक",
+                disclaimer_text: "⚠️ **अस्वीकरण (Disclaimer):** यह केवल AI सलाह है। चिकित्सा निदान के लिए इसका उपयोग न करें। तुरंत डॉक्टर से सलाह लें।",
+                input_placeholder: "अपने लक्षणों का विवरण दर्ज करें...",
+                send_btn: "भेजें",
+                send_loading: "... सोच रहा है",
+                ai_error: "API कॉल में त्रुटि। अपनी API कुंजी और इंटरनेट कनेक्शन जांचें।",
+                ai_fallback: "क्षमा करें, मैं इस समस्या में आपकी सहायता नहीं कर सका। कृपया सीधे डॉक्टर से संपर्क करें।",
+                ai_welcome: "मैं आरोग्यएआई हूँ। कृपया अपने लक्षणों का संक्षेप में हिंदी में वर्णन करें।",
+                map_title: "📍 निकटतम स्वास्थ्य केंद्र खोजक",
+                map_desc: "यह सुविधा आपके स्थान के आधार पर निकटतम अस्पतालों, क्लीनिकों और फार्मेसियों को खोजने के लिए Google Maps का उपयोग करती है।",
+                map_btn: "GPS स्थान के आधार पर खोजें",
+                reminder_title: "⏰ दवा अनुस्मारक",
+                reminder_desc: "दवा का नाम और समय दर्ज करें। आपके अनुस्मारक स्थायी रूप से सहेजे जाएंगे।", // SIMPLIFIED HI
+                med_name_label: "दवा का नाम",
+                med_time_label: "समय (Time)",
+                set_reminder_btn: "अनुस्मारक सेट करें",
+                reminder_empty_alert: "कृपया दवा का नाम और समय दोनों दर्ज करें।",
+                reminder_empty_list: "यहां कोई अनुस्मारक सेट नहीं किया गया है।",
+                reminder_delete_btn: "मिटाएँ",
+                reminder_added_on: (date) => `<span class="text-xs text-gray-500 block"> (${date} को जोड़ा गया)</span>`,
+                map_loc_error: "GPS स्थान अनुपलब्ध है: कृपया स्थान अनुमतियाँ सक्षम करें।"
+            }
+        };
+
+        // --- UI and Language Functions ---
+
+        function updateUI(lang) {
+            const content = languageContent[lang];
+            
+            document.getElementById('app-title').textContent = content.app_title;
+            document.getElementById('header-tagline').textContent = content.header_tag;
+            document.getElementById('tab-chat').textContent = content.tab_chat;
+            document.getElementById('tab-map').textContent = content.tab_map;
+            document.getElementById('tab-reminder').textContent = content.tab_reminder;
+            document.getElementById('disclaimer-box').innerHTML = content.disclaimer_text;
+            document.getElementById('chat-input').placeholder = content.input_placeholder;
+            document.getElementById('send-btn').textContent = content.send_btn;
+            document.getElementById('welcome-message').textContent = content.ai_welcome;
+            document.getElementById('map-title').textContent = content.map_title;
+            document.getElementById('map-desc').textContent = content.map_desc;
+            document.getElementById('find-hospitals-btn').textContent = content.map_btn;
+            document.getElementById('reminder-title').textContent = content.reminder_title;
+            document.getElementById('reminder-desc').textContent = content.reminder_desc;
+            document.getElementById('med-name-label').textContent = content.med_name_label;
+            document.getElementById('med-time-label').textContent = content.med_time_label;
+            document.getElementById('set-reminder-btn').textContent = content.set_reminder_btn;
+            
+            // Re-render reminders to apply new language format
+            if (db) loadReminders();
+        }
+
+        window.changeLanguage = (langCode) => {
+            currentLang = langCode;
+            updateUI(langCode);
+        }
+        
+        window.showSection = (sectionId) => {
+            document.querySelectorAll('section').forEach(section => {
+                section.classList.add('hidden');
+            });
+            document.getElementById(`section-${sectionId}`).classList.remove('hidden');
+
+            document.querySelectorAll('[id^="tab-"]').forEach(tab => {
+                tab.classList.remove('text-emerald-700', 'border-emerald-700');
+                tab.classList.add('text-gray-500', 'border-transparent');
+            });
+            document.getElementById(`tab-${sectionId}`).classList.remove('text-gray-500', 'border-transparent');
+            document.getElementById(`tab-${sectionId}`).classList.add('text-emerald-700', 'border-emerald-700');
+        }
+        
+        // --- Feature 1: AI Chat Logic ---
+        function appendMessage(sender, text) {
+            const chatBox = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message');
+
+            if (sender === 'user') {
+                messageDiv.classList.add('user-message');
+                messageDiv.textContent = text;
+            } else {
+                messageDiv.innerHTML = text.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); 
+                messageDiv.classList.add('ai-message');
+            }
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight; 
+        }
+
+        window.sendQuery = async () => {
+            const inputElement = document.getElementById('chat-input');
+            const userQuery = inputElement.value.trim();
+            const content = languageContent[currentLang];
+            
+            if (!userQuery) {
+                return; 
+            }
+            
+            appendMessage('user', userQuery);
+            inputElement.value = '';
+
+            const sendButton = document.getElementById('send-btn');
+            const originalButtonText = sendButton.textContent;
+            sendButton.disabled = true;
+            sendButton.textContent = content.send_loading; 
+
+            try {
+                let langName;
+                if (currentLang === 'kn') {
+                    langName = 'Kannada';
+                } else if (currentLang === 'hi') {
+                    langName = 'Hindi';
+                } else {
+                    langName = 'English';
+                }
+
+                const systemPrompt = `You are a non-diagnostic, friendly AI health assistant providing preliminary, immediate advice. The user reports symptoms. You MUST respond in ${langName} with: 1. **Safe and immediate first aid steps or home remedies (non-prescription advice only).** 2. Common or possible causes of the symptoms. 3. A strong, bolded disclaimer to consult a doctor immediately. Use clear bullet points and simple language.`;
+                
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
+                
+                // Using exponential backoff for API call
+                let response;
+                let result;
+                for (let i = 0; i < 3; i++) { // Max 3 attempts
+                    try {
+                        const payload = {
+                            contents: [{ parts: [{ text: userQuery }] }],
+                            systemInstruction: { parts: [{ text: systemPrompt }] },
+                            tools: [{ "google_search": {} }], 
+                        };
+
+                        response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        
+                        if (response.ok) {
+                            result = await response.json();
+                            break; // Success, exit loop
+                        } else if (response.status === 429) {
+                            // Rate limit, wait with exponential backoff
+                            await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+                        } else {
+                            // Non-retryable error
+                            throw new Error(`API returned status ${response.status}`);
+                        }
+                    } catch (e) {
+                        if (i === 2) throw e; // Last attempt, re-throw
+                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+                    }
+                }
+
+                const aiResponseText = result.candidates?.[0]?.content?.parts?.[0]?.text || content.ai_fallback;
+                
+                appendMessage('ai', aiResponseText);
+
+            } catch (error) {
+                console.error("Gemini API Error:", error);
+                appendMessage('ai', content.ai_error);
+            } finally {
+                sendButton.disabled = false;
+                sendButton.textContent = originalButtonText;
+            }
+        }
+
+        // --- Feature 2: Maps Logic ---
+        document.getElementById('find-hospitals-btn').addEventListener('click', () => {
+            const content = languageContent[currentLang];
+            const mapResultsDiv = document.getElementById('map-results');
+            mapResultsDiv.classList.remove('hidden');
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    // Search for hospitals, clinics, and pharmacies
+                    const mapsUrl = `https://www.google.com/maps/search/hospital+clinic+pharmacy/@${lat},${lng},14z`;
+                    window.open(mapsUrl, '_blank');
+                    
+                    let mapsMessage;
+                    if (currentLang === 'kn') {
+                        mapsMessage = `<p class="font-semibold text-gray-700">GPS ಸ್ಥಳ: ${lat.toFixed(4)}, ${lng.toFixed(4)}</p><p class="text-xs text-emerald-600 mt-1">ಹತ್ತಿರದ ಸಂಪನ್ಮೂಲಗಳಿಗಾಗಿ Google Maps ಅನ್ನು ಹೊಸ ಟ್ಯಾಬ್‌ನಲ್ಲಿ ತೆರೆಯಲಾಗಿದೆ!</p>`;
+                    } else if (currentLang === 'hi') {
+                        mapsMessage = `<p class="font-semibold text-gray-700">GPS स्थान: ${lat.toFixed(4)}, ${lng.toFixed(4)}</p><p class="text-xs text-emerald-600 mt-1">निकटतम संसाधनों के लिए Google Maps को एक नए टैब में खोला गया है!</p>`;
+                    } else {
+                        mapsMessage = `<p class="font-semibold text-gray-700">GPS Location: ${lat.toFixed(4)}, ${lng.toFixed(4)}</p><p class="text-xs text-emerald-600 mt-1">Google Maps opened in a new tab for nearest resources!</p>`;
+                    }
+                    
+                    mapResultsDiv.innerHTML = mapsMessage;
+
+                }, (error) => {
+                    console.error("Geolocation Error:", error.message);
+                    mapResultsDiv.innerHTML = `<p class="text-red-500 font-semibold">${content.map_loc_error}</p>`;
+                }, { enableHighAccuracy: true });
+            } else {
+                console.error("Geolocation Error: Browser does not support geolocation.");
+                mapResultsDiv.innerHTML = `<p class="text-red-500 font-semibold">${content.map_loc_error}</p>`;
+            }
+        });
+
+        // --- Feature 3: Reminder Logic (Firestore) ---
+
+        function renderReminderItem(reminder, docId) {
+            const content = languageContent[currentLang];
+            
+            let addedText = '';
+            if (reminder.createdAt && reminder.createdAt.toDate) {
+                // Formatting date and time
+                const date = reminder.createdAt.toDate().toLocaleDateString(currentLang, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                addedText = content.reminder_added_on(date);
+            }
+
+            let reminderText;
+            if (currentLang === 'kn') {
+                reminderText = `**${reminder.name}** ಗಾಗಿ ಜ್ಞಾಪನೆಯನ್ನು **${reminder.time}** ಗೆ ಹೊಂದಿಸಲಾಗಿದೆ.`;
+            } else if (currentLang === 'hi') {
+                reminderText = `**${reminder.name}** के लिए अनुस्मारक **${reminder.time}** पर सेट किया गया है।`;
+            } else {
+                reminderText = `Reminder for **${reminder.name}** set for **${reminder.time}**.`;
+            }
+            
+            // Note: Added text is outside the paragraph for better styling, still inside the main div
+            return `
+                <div id="reminder-${docId}" class="p-3 bg-emerald-50 rounded-lg border border-emerald-200 text-sm text-emerald-800 flex flex-col justify-between items-start">
+                    <div class="flex justify-between items-center w-full">
+                        <p class="font-semibold">${reminderText.replace(/\*\*(.*?)\*\*/g, '<strong class="text-emerald-900">$1</strong>')}</p>
+                        <button onclick="deleteReminder('${docId}')" class="text-red-600 hover:text-red-800 p-1 transition duration-150 flex-shrink-0" title="${content.reminder_delete_btn}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 10-2 0v6a1 1 0 102 0V8z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                    ${addedText}
+                </div>
+            `;
+        }
+
+        window.loadReminders = () => {
+            if (!db || userId === 'anonymous') return; 
+
+            const remindersCollectionPath = `artifacts/${appId}/users/${userId}/reminders`;
+            const remindersQuery = query(collection(db, remindersCollectionPath));
+            const listDiv = document.getElementById('reminder-list');
+            
+            // Set initial loading state
+            listDiv.innerHTML = `<div class="p-3 bg-blue-50 rounded-lg border border-blue-200 text-sm text-blue-800" id="loading-reminders">Loading reminders...</div>`;
+
+            // Setup real-time listener
+            onSnapshot(remindersQuery, (snapshot) => {
+                listDiv.innerHTML = ''; 
+                
+                if (snapshot.empty) {
+                    listDiv.innerHTML = `<div class="p-3 bg-gray-50 rounded-lg border border-gray-200 text-sm text-gray-700">${languageContent[currentLang].reminder_empty_list}</div>`;
+                    return;
+                }
+
+                // Sort reminders by time client-side (as per constraint)
+                const reminders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                reminders.sort((a, b) => a.time.localeCompare(b.time)); // Sorts by time string (e.g., "10:30" before "12:00")
+
+                reminders.forEach(reminder => {
+                    const html = renderReminderItem(reminder, reminder.id);
+                    listDiv.innerHTML += html;
+                });
+                console.log(`Reminders updated. Total: ${snapshot.docs.length}`);
+            }, (error) => {
+                console.error("Error fetching reminders: ", error);
+                listDiv.innerHTML = `<p class="text-red-500">Error loading reminders: ${error.message}</p>`;
+            });
+        }
+
+        window.setReminder = async () => {
+            if (!db || userId === 'anonymous') {
+                console.error("Firestore not initialized or user not authenticated.");
+                return;
+            }
+
+            const name = document.getElementById('med-name').value.trim();
+            const time = document.getElementById('med-time').value.trim();
+            const content = languageContent[currentLang];
+            
+            if (!name || !time) {
+                // Custom alert message for user
+                const listDiv = document.getElementById('reminder-list');
+                listDiv.innerHTML = `<div class="p-3 bg-red-100 rounded-lg border border-red-300 text-sm text-red-800 mb-2">${content.reminder_empty_alert}</div>` + listDiv.innerHTML;
+                setTimeout(() => { 
+                    const errorDiv = listDiv.querySelector('.bg-red-100');
+                    if(errorDiv) errorDiv.remove();
+                    // Reload reminders to clear temporary message, although onSnapshot should handle it.
+                    if (db) loadReminders();
+                }, 3000); 
+                console.error(content.reminder_empty_alert);
+                return;
+            }
+
+            const reminder = {
+                name: name,
+                time: time,
+                status: 'active',
+                createdAt: serverTimestamp() 
+            };
+
+            const remindersCollection = collection(db, `artifacts/${appId}/users/${userId}/reminders`);
+            const setBtn = document.getElementById('set-reminder-btn');
+            const originalBtnText = setBtn.textContent;
+            setBtn.disabled = true;
+
+            try {
+                await addDoc(remindersCollection, reminder);
+                console.log("Reminder successfully added to Firestore.");
+                document.getElementById('med-name').value = '';
+                document.getElementById('med-time').value = '';
+                // onSnapshot handles UI update automatically
+            } catch (e) {
+                console.error("Error adding document: ", e);
+                console.error("Database Error: Could not save reminder.", e);
+            } finally {
+                setBtn.disabled = false;
+                setBtn.textContent = originalBtnText;
+            }
+        }
+
+        window.deleteReminder = async (docId) => {
+            if (!db || userId === 'anonymous') return;
+            
+            console.log("Attempting to delete reminder:", docId); 
+
+            try {
+                await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/reminders`, docId));
+                console.log("Reminder deleted successfully:", docId);
+            } catch (e) {
+                console.error("Error deleting document: ", e);
+            }
+        }
+
+
+        // Initialize the app view
+        window.onload = () => {
+            document.getElementById('language-selector').value = 'kn';
+            changeLanguage('kn');
+            showSection('chat');
+        };
+    </script>
+</body>
+</html>
