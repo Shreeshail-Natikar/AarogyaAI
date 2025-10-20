@@ -117,7 +117,7 @@
         // ************************************************
         // CRITICAL: REPLACE "YOUR_GEMINI_API_KEY" WITH YOUR KEY
         // ************************************************
-        const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY"; 
+        const GEMINI_API_KEY = "AIzaSyBTfvnIaI9yyGPncmPhtcJxwq3S9fxe0Vg"; 
         
         // Global Firebase vars
         let db;
@@ -125,15 +125,25 @@
         let userId = 'anonymous'; 
 
         // Mandatory Global Variables and Initialization
-        // NOTE: These variables are provided by the canvas environment
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // NOTE: The firebaseConfig object below is now HARDCODED using the details from your screenshot
+        
+        const firebaseConfig = {
+          apiKey: "AIzaSyD1sTIHOSx1MEe0ndQcSjBz1NzIBaynaSo",
+          authDomain: "aarogya-ai-project.firebaseapp.com",
+          projectId: "aarogya-ai-project",
+          storageBucket: "aarogya-ai-project.appspot.com",
+          messagingSenderId: "100947588083",
+          appId: "1:100947588083:web:353a65964e4758e61f9886",
+          measurementId: "G-R939MC5GNL"
+        };
+        
+        const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
         let currentLang = 'kn'; 
 
         // --- Firebase Initialization and Auth ---
-        if (Object.keys(firebaseConfig).length > 0) {
+        if (Object.keys(firebaseConfig).length > 0 && firebaseConfig.apiKey) { // Check if config is present
             setLogLevel('debug');
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
@@ -522,8 +532,6 @@
                 setTimeout(() => { 
                     const errorDiv = listDiv.querySelector('.bg-red-100');
                     if(errorDiv) errorDiv.remove();
-                    // Reload reminders to clear temporary message, although onSnapshot should handle it.
-                    if (db) loadReminders();
                 }, 3000); 
                 console.error(content.reminder_empty_alert);
                 return;
@@ -540,6 +548,8 @@
             const setBtn = document.getElementById('set-reminder-btn');
             const originalBtnText = setBtn.textContent;
             setBtn.disabled = true;
+            setBtn.textContent = (currentLang === 'kn' ? 'ಉಳಿಸಲಾಗುತ್ತಿದೆ...' : currentLang === 'hi' ? 'सेव हो रहा है...' : 'Saving...');
+
 
             try {
                 await addDoc(remindersCollection, reminder);
@@ -547,35 +557,51 @@
                 document.getElementById('med-name').value = '';
                 document.getElementById('med-time').value = '';
                 // onSnapshot handles UI update automatically
-            } catch (e) {
-                console.error("Error adding document: ", e);
-                console.error("Database Error: Could not save reminder.", e);
+            } catch (error) {
+                console.error("Error setting reminder:", error);
+                const listDiv = document.getElementById('reminder-list');
+                listDiv.innerHTML = `<div class="p-3 bg-red-100 rounded-lg border border-red-300 text-sm text-red-800 mb-2">Error saving reminder: ${error.message}</div>` + listDiv.innerHTML;
+                setTimeout(() => { 
+                    const errorDiv = listDiv.querySelector('.bg-red-100');
+                    if(errorDiv) errorDiv.remove();
+                }, 5000); 
             } finally {
                 setBtn.disabled = false;
                 setBtn.textContent = originalBtnText;
             }
         }
-
+        
         window.deleteReminder = async (docId) => {
-            if (!db || userId === 'anonymous') return;
+            if (!db || userId === 'anonymous') {
+                console.error("Firestore not initialized or user not authenticated.");
+                return;
+            }
             
-            console.log("Attempting to delete reminder:", docId); 
+            const remindersCollectionPath = `artifacts/${appId}/users/${userId}/reminders`;
+            const docRef = doc(db, remindersCollectionPath, docId);
 
             try {
-                await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/reminders`, docId));
-                console.log("Reminder deleted successfully:", docId);
-            } catch (e) {
-                console.error("Error deleting document: ", e);
+                await deleteDoc(docRef);
+                console.log(`Reminder ${docId} successfully deleted.`);
+                // onSnapshot handles UI update automatically
+            } catch (error) {
+                console.error("Error deleting reminder:", error);
+                const listDiv = document.getElementById('reminder-list');
+                listDiv.innerHTML = `<div class="p-3 bg-red-100 rounded-lg border border-red-300 text-sm text-red-800 mb-2">Error deleting reminder: ${error.message}</div>` + listDiv.innerHTML;
+                setTimeout(() => { 
+                    const errorDiv = listDiv.querySelector('.bg-red-100');
+                    if(errorDiv) errorDiv.remove();
+                }, 5000); 
             }
         }
 
-
-        // Initialize the app view
+        // --- Initial Load ---
         window.onload = () => {
-            document.getElementById('language-selector').value = 'kn';
-            changeLanguage('kn');
-            showSection('chat');
+            // Set initial language and UI
+            changeLanguage(currentLang); 
+            // The Firebase auth logic automatically calls loadReminders() after successful authentication.
         };
+
     </script>
 </body>
 </html>
