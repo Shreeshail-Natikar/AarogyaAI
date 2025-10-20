@@ -14,6 +14,19 @@
         .message { max-width: 85%; padding: 0.75rem 1rem; border-radius: 1rem; margin-bottom: 0.5rem; }
         .user-message { background-color: #3b82f6; color: white; margin-left: auto; border-bottom-right-radius: 0; }
         .ai-message { background-color: #e5e7eb; color: #1f2937; border-bottom-left-radius: 0; }
+        /* Style for the fixed input area */
+        .chat-input-fixed {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            max-width: 480px; /* Matching the max-w-md container width */
+            margin: 0 auto;
+            z-index: 20;
+            background-color: white;
+            border-top: 1px solid #e5e7eb;
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -44,20 +57,20 @@
         </div>
 
         <!-- Section: 1. AI Chat -->
-        <section id="section-chat" class="p-4">
+        <section id="section-chat" class="p-4 relative min-h-[calc(100vh-12rem)]">
             <!-- Medical Disclaimer - CRITICAL for Judges -->
             <div id="disclaimer-box" class="p-3 mb-4 bg-yellow-100 text-yellow-800 border border-yellow-300 rounded-lg text-sm font-medium">
                 ⚠️ **ಹಕ್ಕುತ್ಯಾಗ (Disclaimer):** ಇದು AI ಸಲಹೆ ಮಾತ್ರ. ವೈದ್ಯಕೀಯ ರೋಗನಿರ್ಣಯಕ್ಕಾಗಿ ಇದನ್ನು ಬಳಸಬೇಡಿ. ತಕ್ಷಣ ವೈದ್ಯರನ್ನು ಭೇಟಿ ಮಾಡಿ.
             </div>
 
             <!-- Chat Display Area -->
-            <div id="chat-messages" class="chat-container space-y-3 p-2 bg-gray-50 rounded-lg border pb-20">
+            <div id="chat-messages" class="chat-container space-y-3 p-2 bg-gray-50 rounded-lg border pb-4">
                 <!-- Initial Welcome Message -->
                 <div class="ai-message" id="welcome-message">ನಾನು AarogyaAI. ದಯವಿಟ್ಟು ನಿಮ್ಮ ರೋಗಲಕ್ಷಣಗಳ ಬಗ್ಗೆ ಸಂಕ್ಷಿಪ್ತವಾಗಿ ಕನ್ನಡದಲ್ಲಿ ತಿಳಿಸಿ.</div>
             </div>
 
             <!-- Chat Input - FIXED POSITIONING with z-20 -->
-            <div class="flex p-4 border-t absolute bottom-0 left-0 right-0 bg-white z-20">
+            <div class="flex p-4 chat-input-fixed max-w-md">
                 <input type="text" id="chat-input" placeholder="ನಿಮ್ಮ ರೋಗಲಕ್ಷಣಗಳನ್ನು ನಮೂದಿಸಿ..." class="flex-1 p-3 border border-gray-300 rounded-l-xl focus:ring-emerald-500 focus:border-emerald-500">
                 <button id="send-btn" onclick="sendQuery()" class="bg-emerald-600 text-white p-3 rounded-r-xl font-semibold hover:bg-emerald-700 transition duration-150">ಕಳುಹಿಸು</button>
             </div>
@@ -84,7 +97,7 @@
         <!-- Section: 3. Medicine Reminder -->
         <section id="section-reminder" class="p-4 hidden">
             <h2 id="reminder-title" class="text-lg font-semibold mb-3 text-emerald-800">⏰ ಔಷಧ ಜ್ಞಾಪನೆ</h2>
-            <!-- UPDATED DESCRIPTION (no mention of Firestore) -->
+            <!-- UPDATED DESCRIPTION -->
             <p id="reminder-desc" class="mb-4 text-gray-600">ಔಷಧದ ಹೆಸರು ಮತ್ತು ಸಮಯವನ್ನು ನಮೂದಿಸಿ. ನಿಮ್ಮ ಜ್ಞಾಪನೆಗಳು ಉಳಿಸಲ್ಪಡುತ್ತವೆ.</p>
             
             <div id="auth-status" class="mb-4 p-2 bg-gray-100 rounded-lg text-sm text-gray-600 border border-gray-300">Connecting to database...</div>
@@ -115,41 +128,66 @@
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // ************************************************
-        // CRITICAL: REPLACE "YOUR_GEMINI_API_KEY" WITH YOUR KEY
+        // CRITICAL: PASTE YOUR GEMINI API KEY HERE
+        // It must be wrapped in double quotes: "YOUR_KEY_HERE"
         // ************************************************
-        const GEMINI_API_KEY = "AIzaSyBTfvnIaI9yyGPncmPhtcJxwq3S9fxe0Vg"; 
+        const GEMINI_API_KEY = "AIzaSyBmHB5eefbnlkKuZlacKRAv4qBlyKEO650"; 
         
         // Global Firebase vars
         let db;
         let auth;
         let userId = 'anonymous'; 
-
-        // Mandatory Global Variables and Initialization
-        // NOTE: The firebaseConfig object below is now HARDCODED using the details from your screenshot
-        
-        const firebaseConfig = {
-          apiKey: "AIzaSyD1sTIHOSx1MEe0ndQcSjBz1NzIBaynaSo",
-          authDomain: "aarogya-ai-project.firebaseapp.com",
-          projectId: "aarogya-ai-project",
-          storageBucket: "aarogya-ai-project.appspot.com",
-          messagingSenderId: "100947588083",
-          appId: "1:100947588083:web:353a65964e4758e61f9886",
-          measurementId: "G-R939MC5GNL"
-        };
-        
-        const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId;
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
+        let appId = 'default-app-id'; // Fallback if __app_id is not defined
         let currentLang = 'kn'; 
 
         // --- Firebase Initialization and Auth ---
-        if (Object.keys(firebaseConfig).length > 0 && firebaseConfig.apiKey) { // Check if config is present
+        
+        const authStatusDiv = document.getElementById('auth-status');
+        
+        // 1. Get Firebase Config
+        // --- STATIC FALLBACK CONFIGURATION (Used if globals are missing) ---
+        let firebaseConfig = {
+            apiKey: "MOCK_API_KEY_REPLACE_ME", 
+            authDomain: "aarogyaai-demo.firebaseapp.com",
+            projectId: "aarogyaai-demo",
+            storageBucket: "aarogyaai-demo.appspot.com",
+            messagingSenderId: "508797358331",
+            appId: "1:508797358331:web:mockedconfig",
+        };
+        // ---------------------------------------------------
+        
+        let isConfigAvailable = false;
+        
+        try {
+            // PRIMARY: Check for and use the global configuration variables provided by the environment
+            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                firebaseConfig = JSON.parse(__firebase_config); // Overwrite with environment config
+                isConfigAvailable = true;
+                appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId;
+                console.log("Using environment Firebase configuration.");
+            } else {
+                // FALLBACK: If global is missing, proceed using the static config (even if it's the mock one).
+                if (firebaseConfig.apiKey) {
+                    isConfigAvailable = true;
+                    appId = firebaseConfig.projectId;
+                    console.warn("Global variable __firebase_config is not defined. Using static/mock Firebase configuration.");
+                } else {
+                    console.error("CRITICAL: No Firebase configuration (globals or static) available.");
+                }
+            }
+        } catch (e) {
+            console.error("Error parsing __firebase_config:", e);
+        }
+
+        // --- Firebase Initialization ---
+        // We now proceed to initialize Firebase if we have ANY config (even the mock one)
+        if (isConfigAvailable && firebaseConfig.apiKey) {
             setLogLevel('debug');
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
             
-            const authStatusDiv = document.getElementById('auth-status');
+            const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
             // Function to update the UI with User ID
             const updateAuthStatus = (uid, method) => {
@@ -166,23 +204,34 @@
                         updateAuthStatus(userCredential.user.uid, 'Custom Token');
                     })
                     .catch((error) => {
-                        console.error("Custom token sign in failed. Falling back to anonymous.", error);
+                        console.error("Custom token sign in failed. Falling back to anonymous. If API key is mock, this is expected.", error);
                         // Fallback to anonymous sign-in
                         signInAnonymously(auth).then(userCredential => {
                             updateAuthStatus(userCredential.user.uid, 'Anonymous');
+                        }).catch(anonError => {
+                            // This part handles the case where even anonymous sign-in fails (e.g., bad API key)
+                            authStatusDiv.innerHTML = `<span class="text-red-500">Authentication Failed: Check API Key/Rules.</span>`;
+                            document.getElementById('loading-reminders').innerHTML = `<p class="text-red-500">Database Error: Failed to authenticate user. Reminders disabled.</p>`;
+                            console.error("CRITICAL: Anonymous sign in failed.", anonError);
                         });
                     });
             } else {
                 authStatusDiv.textContent = "Signing in anonymously...";
                 signInAnonymously(auth).then(userCredential => {
                     updateAuthStatus(userCredential.user.uid, 'Anonymous');
+                }).catch(anonError => {
+                    authStatusDiv.innerHTML = `<span class="text-red-500">Authentication Failed: Check API Key/Rules.</span>`;
+                    document.getElementById('loading-reminders').innerHTML = `<p class="text-red-500">Database Error: Failed to authenticate user. Reminders disabled.</p>`;
+                    console.error("CRITICAL: Anonymous sign in failed.", anonError);
                 });
             }
         } else {
-            document.getElementById('auth-status').innerHTML = `<span class="text-red-500">Database connection failed: Firebase config missing.</span>`;
-            document.getElementById('loading-reminders').innerHTML = `<p class="text-red-500">Database connection error: Firebase config missing.</p>`;
-            console.error("Firebase configuration is missing. Reminder functionality will not work.");
+            // This is the true fallback for when literally no configuration is available.
+            document.getElementById('auth-status').innerHTML = `<span class="text-red-500">Database Error: CRITICAL CONFIGURATION MISSING.</span>`;
+            document.getElementById('loading-reminders').innerHTML = `<p class="text-red-500">Database Error: Cannot connect to Firebase.</p>`;
+            console.error("CRITICAL: Firebase configuration is missing. Reminder functionality will not work.");
         }
+
 
         // Localization content map (Updated reminder_desc)
         const languageContent = {
@@ -196,7 +245,7 @@
                 input_placeholder: "ನಿಮ್ಮ ರೋಗಲಕ್ಷಣಗಳನ್ನು ನಮೂದಿಸಿ...",
                 send_btn: "ಕಳುಹಿಸು",
                 send_loading: "... ಯೋಚಿಸುತ್ತಿದೆ",
-                ai_error: "API ಕರೆಯಲ್ಲಿ ದೋಷ ಕಂಡುಬಂದಿದೆ. ನಿಮ್ಮ API ಕೀ ಸರಿಯಾಗಿದೆ ಮತ್ತು ಇಂಟರ್ನೆಟ್ ಸಂಪರ್ಕವನ್ನು ಪರಿಶೀಲಿಸಿ.",
+                ai_error: "API ಕರೆಯಲ್ಲಿ ದೋಷ ಕಂಡುಬಂದಿದೆ. ದಯವಿಟ್ಟು ನಿಮ್ಮ ಕೀಲಿಯನ್ನು ಪರಿಶೀಲಿಸಿ (API Key) ಮತ್ತು ಪುನಃ ಪ್ರಯತ್ನಿಸಿ.", // Updated message
                 ai_fallback: "ಕ್ಷಮಿಸಿ, ಈ ಸಮಸ್ಯೆಯ ಬಗ್ಗೆ ನಾನು ನಿಮಗೆ ಸಹಾಯ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ನೇರವಾಗಿ ವೈದ್ಯರನ್ನು ಸಂಪರ್ಕಿಸಿ.",
                 ai_welcome: "ನಾನು AarogyaAI. ದಯವಿಟ್ಟು ನಿಮ್ಮ ರೋಗಲಕ್ಷಣಗಳ ಬಗ್ಗೆ ಸಂಕ್ಷಿಪ್ತವಾಗಿ ಕನ್ನಡದಲ್ಲಿ ತಿಳಿಸಿ.",
                 map_title: "📍 ಹತ್ತಿರದ ಆರೋಗ್ಯ ಕೇಂದ್ರ ಶೋಧಕ",
@@ -223,7 +272,7 @@
                 input_placeholder: "Enter your symptoms...",
                 send_btn: "Send",
                 send_loading: "... Thinking",
-                ai_error: "API call error. Check your API key and internet connection.",
+                ai_error: "API call error. Please check your key (API Key) and try again.", // Updated message
                 ai_fallback: "Sorry, I couldn't assist with this issue. Please contact a doctor directly.",
                 ai_welcome: "I am AarogyaAI. Please describe your symptoms briefly in English.",
                 map_title: "📍 Nearest Health Center Finder",
@@ -250,7 +299,7 @@
                 input_placeholder: "अपने लक्षणों का विवरण दर्ज करें...",
                 send_btn: "भेजें",
                 send_loading: "... सोच रहा है",
-                ai_error: "API कॉल में त्रुटि। अपनी API कुंजी और इंटरनेट कनेक्शन जांचें।",
+                ai_error: "API कॉल में त्रुटि। कृपया अपनी कुंजी (API Key) जांचें और पुनः प्रयास करें।", // Updated message
                 ai_fallback: "क्षमा करें, मैं इस समस्या में आपकी सहायता नहीं कर सका। कृपया सीधे डॉक्टर से संपर्क करें।",
                 ai_welcome: "मैं आरोग्यएआई हूँ। कृपया अपने लक्षणों का संक्षेप में हिंदी में वर्णन करें।",
                 map_title: "📍 निकटतम स्वास्थ्य केंद्र खोजक",
@@ -340,6 +389,14 @@
             if (!userQuery) {
                 return; 
             }
+
+            // --- CRITICAL CHECK FOR API KEY ---
+            if (!GEMINI_API_KEY || GEMINI_API_KEY.trim() === "") {
+                console.error("CRITICAL: GEMINI_API_KEY is missing or empty.");
+                appendMessage('ai', 'Error: Gemini API Key is missing. Please paste your key into the code to enable chat.');
+                return;
+            }
+            // --- END CRITICAL CHECK ---
             
             appendMessage('user', userQuery);
             inputElement.value = '';
@@ -387,7 +444,7 @@
                             // Rate limit, wait with exponential backoff
                             await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
                         } else {
-                            // Non-retryable error
+                            // Non-retryable error (like 400 for bad key)
                             throw new Error(`API returned status ${response.status}`);
                         }
                     } catch (e) {
@@ -402,7 +459,12 @@
 
             } catch (error) {
                 console.error("Gemini API Error:", error);
-                appendMessage('ai', content.ai_error);
+                // Specifically check for 400 error which indicates bad API Key
+                let errorMessage = content.ai_error;
+                if (error.message.includes('400')) {
+                     errorMessage = languageContent[currentLang].ai_error;
+                }
+                appendMessage('ai', errorMessage);
             } finally {
                 sendButton.disabled = false;
                 sendButton.textContent = originalButtonText;
@@ -482,8 +544,12 @@
         }
 
         window.loadReminders = () => {
-            if (!db || userId === 'anonymous') return; 
+            if (!db || userId === 'anonymous') {
+                document.getElementById('loading-reminders').textContent = "Waiting for user authentication...";
+                return;
+            }
 
+            // Firestore Path: /artifacts/{appId}/users/{userId}/reminders
             const remindersCollectionPath = `artifacts/${appId}/users/${userId}/reminders`;
             const remindersQuery = query(collection(db, remindersCollectionPath));
             const listDiv = document.getElementById('reminder-list');
@@ -511,7 +577,12 @@
                 console.log(`Reminders updated. Total: ${snapshot.docs.length}`);
             }, (error) => {
                 console.error("Error fetching reminders: ", error);
-                listDiv.innerHTML = `<p class="text-red-500">Error loading reminders: ${error.message}</p>`;
+                // Check for Permission Denied error explicitly
+                let errorMessage = error.message.includes('permission denied') 
+                    ? `Database Error (Permission Denied): Check your Firebase Security Rules.`
+                    : `Error loading reminders: ${error.message}`;
+                    
+                listDiv.innerHTML = `<div class="p-3 bg-red-100 rounded-lg border border-red-300 text-sm text-red-800">${errorMessage}</div>`;
             });
         }
 
@@ -528,7 +599,8 @@
             if (!name || !time) {
                 // Custom alert message for user
                 const listDiv = document.getElementById('reminder-list');
-                listDiv.innerHTML = `<div class="p-3 bg-red-100 rounded-lg border border-red-300 text-sm text-red-800 mb-2">${content.reminder_empty_alert}</div>` + listDiv.innerHTML;
+                const errorHtml = `<div class="p-3 bg-red-100 rounded-lg border border-red-300 text-sm text-red-800 mb-2">${content.reminder_empty_alert}</div>`;
+                listDiv.insertAdjacentHTML('afterbegin', errorHtml); // Insert at the top
                 setTimeout(() => { 
                     const errorDiv = listDiv.querySelector('.bg-red-100');
                     if(errorDiv) errorDiv.remove();
@@ -560,7 +632,9 @@
             } catch (error) {
                 console.error("Error setting reminder:", error);
                 const listDiv = document.getElementById('reminder-list');
-                listDiv.innerHTML = `<div class="p-3 bg-red-100 rounded-lg border border-red-300 text-sm text-red-800 mb-2">Error saving reminder: ${error.message}</div>` + listDiv.innerHTML;
+                const errorMessage = `Error saving reminder: ${error.message}`;
+                const errorHtml = `<div class="p-3 bg-red-100 rounded-lg border border-red-300 text-sm text-red-800 mb-2">${errorMessage}</div>`;
+                listDiv.insertAdjacentHTML('afterbegin', errorHtml);
                 setTimeout(() => { 
                     const errorDiv = listDiv.querySelector('.bg-red-100');
                     if(errorDiv) errorDiv.remove();
@@ -587,7 +661,9 @@
             } catch (error) {
                 console.error("Error deleting reminder:", error);
                 const listDiv = document.getElementById('reminder-list');
-                listDiv.innerHTML = `<div class="p-3 bg-red-100 rounded-lg border border-red-300 text-sm text-red-800 mb-2">Error deleting reminder: ${error.message}</div>` + listDiv.innerHTML;
+                const errorMessage = `Error deleting reminder: ${error.message}`;
+                const errorHtml = `<div class="p-3 bg-red-100 rounded-lg border border-red-300 text-sm text-red-800 mb-2">${errorMessage}</div>`;
+                listDiv.insertAdjacentHTML('afterbegin', errorHtml);
                 setTimeout(() => { 
                     const errorDiv = listDiv.querySelector('.bg-red-100');
                     if(errorDiv) errorDiv.remove();
